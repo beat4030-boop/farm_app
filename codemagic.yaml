@@ -1,0 +1,29 @@
+workflows:
+  android-ios-build:
+    name: Farm App - APK + IPA Direct
+    instance_type: mac_mini_m1
+    max_build_duration: 60
+    environment:
+      flutter: stable
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+    scripts:
+      - name: Get Flutter packages
+        script: |
+          flutter pub get
+      - name: Build Android APK
+        script: |
+          flutter build apk --release
+      - name: Build iOS IPA
+        script: |
+          flutter build ipa --release --no-codesign
+    artifacts:
+      - build/app/outputs/flutter-apk/app-release.apk
+      - build/ios/ipa/*.ipa
+    publishing:
+      email:
+        recipients:
+          - your@email.com
