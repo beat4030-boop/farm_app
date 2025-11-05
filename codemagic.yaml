@@ -1,29 +1,59 @@
 workflows:
-  android-ios-build:
-    name: Farm App - APK + IPA Release
-    instance_type: mac_mini_m1  # 클라우드 맥 (무료)
-    max_build_duration: 60  # 안전 60분
+  # Android와 iOS를 동시에 빌드하는 통합 워크플로우를 정의합니다.
+  flutter-release:
+    name: Flutter Release Build (APK & IPA)
+    
+    # Android와 iOS 빌드를 모두 수행할 수 있는 Mac 인스턴스 사용
+    instance_type: mac_mini_m1
+    
     environment:
-      flutter: stable  # Flutter 버전 (Dart 포함)
-    triggering:
-      events:
-        - push  # 푸시 시 자동
-      branch_patterns:
-        - pattern: main
+      flutter: stable # 사용할 Flutter 채널 (stable, beta, master)
+      xcode: 15.0      # iOS 빌드에 사용할 Xcode 버전
+      # 코드 사이닝 정보 (Codemagic UI에서 설정된 그룹 이름을 참조)
+      groups:
+        - android_signing_group
+        - apple_signing_group
+      vars:
+        BUNDLE_ID: com.yourcompany.yourapp
+        
     scripts:
-      - name: Get packages
+      ## 1. 초기 설정 및 의존성 설치
+      - name: Get Flutter dependencies
         script: |
           flutter pub get
-      - name: Build Android APK (Release)
+          # 필요한 경우 다국어 리소스 생성 (이전에 논의된 '태국어 바꾸기'와 관련)
+          # flutter gen-l10n 
+
+      ## 2. Android 빌드 (APK 생성)
+      - name: Build Android Release (APK)
         script: |
-          flutter build apk --release  # 디버그 → 릴리즈 변경
-      - name: Build iOS IPA (Release)
+          # Play Store 배포용 AAB가 아닌, 테스트/직접 설치용 APK를 명시적으로 생성합니다.
+          flutter build apk --release
+
+      ## 3. iOS 빌드 (IPA 생성)
+      - name: Build iOS Release (IPA)
         script: |
-          flutter build ipa --release --no-codesign  # ZIP → IPA
+          # iOS 코드 사이닝 설정 (환경 변수 사용)
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --certificate-private-key "${CM_CERTIFICATE_PRIVATE_KEY}"
+          keychain use-login
+          
+          # IPA 파일을 생성합니다.
+          flutter build ipa --release
+
+    ## 4. 아티팩트 (결과 파일) 수집
     artifacts:
-      - build/app/outputs/flutter-apk/app-release.apk  # APK 경로
-      - build/ios/ipa/*.ipa  # IPA 경로
-    publishing:
-      email:
-        recipients:
-          - beat4030@gmail.com  # 당신 이메일 (완료 알림)
+      # Android APK 파일
+      - build/app/outputs/flutter-apk/app-release.apk
+      
+      # iOS IPA 파일
+      - build/ios/ipa/*.ipa
+      
+      # (선택 사항) Play Store에 업로드할 AAB 파일이 필요하다면 아래 주석을 해제하고
+      # Android 빌드 스크립트에도 flutter build appbundle --release 를 추가해야 합니다.
+      # - build/app/outputs/bundle/release/app-release.aab
+      
+      # 로그 파일을 아티팩트로 포함 (디버깅 용이)
+      - flutter_drive.log
+      - /tmp/xcodebuild*.log
