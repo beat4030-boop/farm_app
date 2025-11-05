@@ -1,29 +1,29 @@
 workflows:
   android-ios-build:
-    name: Farm App - APK + IPA Direct
-    instance_type: mac_mini_m1  # 클라우드 맥 (무료 티어)
-    max_build_duration: 60  # 60분 제한 (안전)
+    name: Farm App - APK + IPA Release
+    instance_type: mac_mini_m1  # 클라우드 맥 (무료)
+    max_build_duration: 60  # 안전 60분
     environment:
       flutter: stable  # Flutter 버전 (Dart 포함)
     triggering:
       events:
-        - push  # GitHub 푸시 시 자동 빌드
+        - push  # 푸시 시 자동
       branch_patterns:
-        - pattern: main  # main 브랜치만
+        - pattern: main
     scripts:
-      - name: Get Flutter packages  # 패키지 설치 (페이스북 로그인 등)
+      - name: Get packages
         script: |
           flutter pub get
-      - name: Build Android APK  # APK 생성 (구매자 직접 설치용)
+      - name: Build Android APK (Release)
         script: |
-          flutter build apk --release  # --debug → --release로 변경 (릴리즈 모드)
-      - name: Build iOS IPA  # IPA 생성 (코드 사인 없이도 OK)
+          flutter build apk --release  # 디버그 → 릴리즈 변경
+      - name: Build iOS IPA (Release)
         script: |
-          flutter build ipa --release --no-codesign  # --no-codesign: 무료 티어 사인 생략 (테스트용)
-    artifacts:  # 다운로드 파일 (바뀐 부분!)
+          flutter build ipa --release --no-codesign  # ZIP → IPA
+    artifacts:
       - build/app/outputs/flutter-apk/app-release.apk  # APK 경로
       - build/ios/ipa/*.ipa  # IPA 경로
-    publishing:  # 알림 (옵션)
+    publishing:
       email:
         recipients:
           - beat4030@gmail.com  # 당신 이메일 (완료 알림)
